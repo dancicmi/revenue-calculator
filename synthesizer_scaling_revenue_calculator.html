@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synthesizer Scaling — Revenue Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f9f8f6;
+    --surface: #ffffff;
+    --surface2: #f2f1ee;
+    --border: rgba(0,0,0,0.10);
+    --border-em: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text-muted: #6b6b67;
+    --text-faint: #a8a8a3;
+    --teal-50: #E1F5EE;
+    --teal-200: #5DCAA5;
+    --teal-400: #1D9E75;
+    --teal-700: #085041;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: 'DM Sans', system-ui, sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110;
+      --surface: #1c1c1a;
+      --surface2: #242422;
+      --border: rgba(255,255,255,0.08);
+      --border-em: rgba(255,255,255,0.16);
+      --text: #f0efe9;
+      --text-muted: #9a9a94;
+      --text-faint: #5a5a56;
+      --teal-50: #04342C;
+      --teal-200: #1D9E75;
+      --teal-400: #5DCAA5;
+      --teal-700: #9FE1CB;
+    }
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding: 2.5rem 1.5rem;
+    line-height: 1.6;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  .page { max-width: 720px; margin: 0 auto; }
+
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); margin-bottom: 4px; }
+  .header p { font-size: 14px; color: var(--text-muted); }
+  .header .tag {
+    display: inline-block; font-size: 11px; font-weight: 500;
+    background: var(--teal-50); color: var(--teal-700);
+    padding: 3px 10px; border-radius: 20px; margin-bottom: 10px;
+    letter-spacing: .04em; text-transform: uppercase;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--text-faint); margin-bottom: .75rem;
+  }
+
+  .scenario-tabs { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 16px; border-radius: var(--radius-md); font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 0.5px solid var(--border-em); background: transparent;
+    color: var(--text-muted); transition: all .15s; font-family: var(--font);
+  }
+  .tab:hover { background: var(--surface2); }
+  .tab.active { background: var(--teal-50); border-color: var(--teal-200); color: var(--teal-700); }
+
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+  .field {
+    background: var(--surface); border-radius: var(--radius-md);
+    padding: .875rem 1rem; border: 0.5px solid var(--border);
+  }
+  .field label { font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px; }
+  .field input[type=number] {
+    width: 100%; background: transparent; border: none; outline: none;
+    font-size: 20px; font-weight: 500; color: var(--text); font-family: var(--font-mono);
+  }
+  .field input[type=range] { width: 100%; margin-top: 6px; accent-color: var(--teal-400); }
+  .field .val-display { font-size: 20px; font-weight: 500; color: var(--text); font-family: var(--font-mono); }
+  .field .sub { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+  .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 1.5rem 0; }
+  .metric {
+    background: var(--surface); border-radius: var(--radius-md);
+    padding: 1rem; border: 0.5px solid var(--border);
+  }
+  .metric.highlight { background: var(--teal-50); border-color: var(--teal-200); }
+  .metric.highlight .mlabel { color: var(--teal-400); }
+  .metric.highlight .mval { color: var(--teal-700); }
+  .mlabel { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+  .mval { font-size: 22px; font-weight: 600; color: var(--text); font-family: var(--font-mono); }
+
+  .divider { height: 0.5px; background: var(--border); margin: 1.5rem 0; }
+
+  .funnel { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 1rem 0; }
+  .fstep {
+    background: var(--surface); border-radius: var(--radius-md); padding: .875rem .5rem;
+    text-align: center; border: 0.5px solid var(--border); position: relative;
+  }
+  .fstep::after {
+    content: '→'; position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+    font-size: 13px; color: var(--text-faint); z-index: 2;
+  }
+  .fstep:last-child::after { display: none; }
+  .fstep.active { background: var(--teal-50); border-color: var(--teal-200); }
+  .fstep.active .fv { color: var(--teal-700); }
+  .fn { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+  .fv { font-size: 18px; font-weight: 600; color: var(--text); font-family: var(--font-mono); }
+
+  .insight {
+    background: var(--surface); border-radius: var(--radius-md);
+    padding: 1rem 1.25rem; border: 0.5px solid var(--border);
+    border-left: 2px solid var(--teal-200); margin-top: 1rem;
+    font-size: 13px; color: var(--text-muted); line-height: 1.7;
+  }
+  .insight strong { color: var(--text); font-weight: 500; }
+
+  .footer { margin-top: 2rem; font-size: 12px; color: var(--text-faint); text-align: center; }
+
+  @media (max-width: 520px) {
+    .input-row { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .funnel { grid-template-columns: 1fr 1fr; }
+    .fstep::after { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="tag">Synthesizer Scaling</div>
+    <h1>Revenue Calculator</h1>
+    <p>Work backwards from your monthly goal to your daily outreach number.</p>
+  </div>
+
+  <div class="scenario-tabs">
+    <button class="tab active" onclick="loadScenario('starter', this)">Starter $10k</button>
+    <button class="tab" onclick="loadScenario('growth', this)">Growth $30k</button>
+    <button class="tab" onclick="loadScenario('freedom', this)">Freedom $100k</button>
+    <button class="tab" onclick="loadScenario('custom', this)">Custom</button>
+  </div>
+
+  <div class="section-label">Revenue inputs</div>
+  <div class="input-row">
+    <div class="field">
+      <label>Monthly revenue goal ($)</label>
+      <input type="number" id="goal" value="10000" oninput="calc()" min="1000" step="1000">
+    </div>
+    <div class="field">
+      <label>Offer price ($)</label>
+      <input type="number" id="price" value="1000" oninput="calc()" min="100" step="100">
+    </div>
+  </div>
+
+  <div class="section-label">Conversion rates</div>
+  <div class="input-row">
+    <div class="field">
+      <label>Close rate: <span id="closeLabel">30%</span></label>
+      <input type="range" id="close" min="5" max="80" value="30" step="1" oninput="syncRange('close','closeLabel','%');calc()">
+      <div class="sub">% of calls taken → closed</div>
+    </div>
+    <div class="field">
+      <label>Show-up rate: <span id="showLabel">80%</span></label>
+      <input type="range" id="show" min="20" max="100" value="80" step="1" oninput="syncRange('show','showLabel','%');calc()">
+      <div class="sub">% of bookings → actually show up</div>
+    </div>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="divider"></div>
+  <div class="section-label">Your client acquisition funnel</div>
+  <div class="funnel" id="funnel"></div>
+
+  <div class="insight" id="insight"></div>
+
+  <div class="footer">Synthesizer Scaling · The Math to Freedom</div>
+</div>
+
+<script>
+  const scenarios = {
+    starter: { goal: 10000, price: 1000, close: 30, show: 80 },
+    growth:  { goal: 30000, price: 3000, close: 35, show: 80 },
+    freedom: { goal: 100000, price: 5800, close: 30, show: 80 },
+    custom:  null
+  };
+
+  function syncRange(id, label, suffix) {
+    document.getElementById(label).textContent = document.getElementById(id).value + suffix;
+  }
+
+  function loadScenario(s, btn) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    if (s === 'custom') return;
+    const d = scenarios[s];
+    document.getElementById('goal').value = d.goal;
+    document.getElementById('price').value = d.price;
+    document.getElementById('close').value = d.close;
+    document.getElementById('show').value = d.show;
+    syncRange('close', 'closeLabel', '%');
+    syncRange('show', 'showLabel', '%');
+    calc();
+  }
+
+  function fmt(n) {
+    return '$' + Math.round(n).toLocaleString();
+  }
+
+  function calc() {
+    const goal      = parseFloat(document.getElementById('goal').value)  || 10000;
+    const price     = parseFloat(document.getElementById('price').value) || 1000;
+    const closeRate = parseFloat(document.getElementById('close').value) / 100;
+    const showRate  = parseFloat(document.getElementById('show').value)  / 100;
+
+    const customers     = Math.ceil(goal / price);
+    const callsTaken    = Math.ceil(customers / closeRate);
+    const callsBooked   = Math.ceil(callsTaken / showRate);
+    const dailyOutreach = Math.ceil(callsBooked / 30);
+    const weeklyBooking = Math.ceil(callsBooked / 4);
+
+    document.getElementById('metrics').innerHTML = `
+      <div class="metric highlight">
+        <div class="mlabel">Monthly goal</div>
+        <div class="mval">${fmt(goal)}</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">Clients needed</div>
+        <div class="mval">${customers}</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">Calls to take</div>
+        <div class="mval">${callsTaken}</div>
+      </div>
+      <div class="metric">
+        <div class="mlabel">Calls to book</div>
+        <div class="mval">${callsBooked}</div>
+      </div>
+    `;
+
+    document.getElementById('funnel').innerHTML = `
+      <div class="fstep active">
+        <div class="fn">Outreach/day</div>
+        <div class="fv">${dailyOutreach}</div>
+      </div>
+      <div class="fstep">
+        <div class="fn">Calls booked</div>
+        <div class="fv">${callsBooked}</div>
+      </div>
+      <div class="fstep">
+        <div class="fn">Show-up rate</div>
+        <div class="fv">${Math.round(showRate * 100)}%</div>
+      </div>
+      <div class="fstep">
+        <div class="fn">Calls taken</div>
+        <div class="fv">${callsTaken}</div>
+      </div>
+      <div class="fstep active">
+        <div class="fn">Closed</div>
+        <div class="fv">${customers}</div>
+      </div>
+    `;
+
+    let msg;
+    if (price >= 5000) {
+      msg = `At <strong>${fmt(price)}/client</strong> you only need <strong>${customers} client${customers > 1 ? 's' : ''}</strong> — this is a premium positioning game. Focus on <strong>deep trust</strong> and qualification, not volume.`;
+    } else if (closeRate >= 0.4) {
+      msg = `Your <strong>${Math.round(closeRate * 100)}% close rate</strong> is strong. The main lever now is <strong>more qualified conversations</strong> — aim for <strong>${weeklyBooking} booked calls/week</strong>.`;
+    } else {
+      const saving = Math.round((1 - closeRate / 0.4) * 100);
+      msg = `Your biggest constraint: <strong>${Math.round(closeRate * 100)}% close rate</strong>. Improving to 40%+ would cut your outreach need by ~${saving}%. Prioritise <strong>sales skill</strong> as your next sprint.`;
+    }
+    document.getElementById('insight').innerHTML = msg;
+  }
+
+  calc();
+</script>
+</body>
+</html>
